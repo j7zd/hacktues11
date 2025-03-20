@@ -2,17 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 255, 255;
-}
-
 body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
@@ -101,4 +92,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
