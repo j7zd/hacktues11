@@ -11,20 +11,28 @@ BLEScan* pBLEScan;
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
         String deviceName = advertisedDevice.getName().c_str();
-        
-        if (deviceName == TARGET_DEVICE) {
-            Serial.println("🔵 M5Core2 Detected!");
-            Serial.print("📡 RSSI: "); Serial.println(advertisedDevice.getRSSI());
-            
-            if (advertisedDevice.haveManufacturerData()) {
-                String manufacturerData = advertisedDevice.getManufacturerData();
-                Serial.print("🏭 Manufacturer Data: ");
-                for (char c : manufacturerData) Serial.print(c);
-                Serial.println();
-            }
+        String target_device = TARGET_DEVICE;
+        int target_device_length = target_device.length();
 
-            Serial.println("-----------------------------");
+        for (int i = 0; i < target_device_length; i++) {
+            if (deviceName[i] != target_device[i]) {
+                return;
+            }
         }
+
+        String id = deviceName.substring(target_device_length);
+
+        Serial.println("🔵 M5Core2 Detected!");
+        Serial.print("📡 RSSI: "); Serial.println(advertisedDevice.getRSSI());
+        
+        if (advertisedDevice.haveManufacturerData()) {
+            String manufacturerData = advertisedDevice.getManufacturerData();
+            Serial.print("🏭 Manufacturer Data: ");
+            for (char c : manufacturerData) Serial.print(c);
+            Serial.println();
+        }
+
+        Serial.println("-----------------------------");
     }
 };
 
