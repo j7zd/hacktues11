@@ -11,14 +11,6 @@ function FloorPlanModel({ url }: { url: string }) {
 // Component for a single device marker with conditional color
 function DeviceMarker({ position, type }: { position: [number, number, number], type: string }) {
   const color = type === "Dev" ? "blue" : "red"
-  // const size = type === "Dev" ? [0.2, 32, 32] : [0.2, 32, 32]
-  // return (
-  //   <mesh position={position}>
-  //     <sphereGeometry args={size} />
-  //     {/* <boxGeometry args={[0.2, 0.2, 0.2]} /> */}
-  //     <meshStandardMaterial color={color} />
-  //   </mesh>
-  // )
 
   if (type === "Dev") {
     return (

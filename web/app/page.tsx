@@ -7,13 +7,15 @@ import DeviceList from "@/components/device-list"
 export default function Home() {
   // Sample device data with hard-coded positions
   const devices = [
-    { id: 1, macAddress: "00:1A:2B:3C:4D:5E", type: "AP", position: [1, -1, 2] },
-    { id: 2, macAddress: "00:5F:6E:7D:8C:9B", type: "AP", position: [-4, -1, -1] },
-    { id: 3, macAddress: "AA:BB:CC:DD:EE:FF", type: "AP", position: [7, -1, 1] },
-    { id: 4, macAddress: "AA:BB:CC:DD:EE:FF", type: "AP", position: [-7, -1, 6] },
+    { id: 1, macAddress: "00:1A:2B:3C:4D:5E", type: "AP", position: [1, -1, 2] }, // center one
 
-    { id: 5, macAddress: "11:22:33:44:55:66", type: "Dev", position: [0, -0.5, 0] },
-    { id: 6, macAddress: "AB:CD:EF:12:34:56", type: "AP", position: [7, -1, 5] },
+    { id: 2, macAddress: "00:5F:6E:7D:8C:9B", type: "AP", position: [6.5, -1, 8] }, // bottom left one
+    { id: 4, macAddress: "AA:BB:CC:DD:EE:FF", type: "AP", position: [-8, -1, 8] }, // top left one
+
+    { id: 3, macAddress: "AA:BB:CC:DD:EE:FF", type: "AP", position: [6.5, -1, -3] }, // bottom right one
+    { id: 6, macAddress: "AB:CD:EF:12:34:56", type: "AP", position: [-8, -1, -3] }, // top right one
+
+    { id: 5, macAddress: "11:22:33:44:55:66", type: "Dev", position: [0, -0.5, 0] }, // center one
   ]
 
   const [currentFloor, setCurrentFloor] = useState("floor1")
