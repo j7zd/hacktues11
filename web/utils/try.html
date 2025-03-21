@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Location Estimation Visualization</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+    #info {
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Location Estimation Visualization</h2>
+  <canvas id="canvas" width="500" height="500"></canvas>
+  <div id="info"></div>
+  
+  <script>
+    // ----- Parameters -----
+    const A = -70; // Reference RSSI (dBm) at 1 meter
+    const n = 2;   // Path-loss exponent
+
+    // ----- Devices Array with AP positions in meters -----
+    const devices = [
+      { id: 3, macAddress: "24:58:7C:E1:F7:9C", type: "AP", position: [4.7, -1, -2.5] },
+      { id: 5, macAddress: "3C:84:27:CC:7A:8C", type: "AP", position: [4.7, -1, 3] },
+      { id: 2, macAddress: "24:58:7C:E1:EE:70", type: "AP", position: [1, -1, 0.5] },
+      { id: 1, macAddress: "24:58:7C:CE:33:A8", type: "AP", position: [1, -1, -2] }
+    ];
+
+    // ----- Updated Node Readings -----
+    const updatedReadings = {
+      "EC:64:C9:9E:E2:3A": {
+        "targetMac": "EC:64:C9:9E:E2:3A",
+        "signals": {
+          "24:58:7C:CE:33:A8": {
+            "mac": "24:58:7C:CE:33:A8",
+            "signal": -81,
+            "timestamp": 1742592046255
+          },
+          "3C:84:27:CC:7A:8C": {
+            "mac": "3C:84:27:CC:7A:8C",
+            "signal": -63,
+            "timestamp": 1742592046158
+          },
+          "24:58:7C:E1:F7:9C": {
+            "mac": "24:58:7C:E1:F7:9C",
+            "signal": -60,
+            "timestamp": 1742592046257
+          },
+          "24:58:7C:E1:EE:70": {
+            "mac": "24:58:7C:E1:EE:70",
+            "signal": -64,
+            "timestamp": 1742592046158
+          }
+        }
+      }
+    };
+
+    // The target MAC for which we estimate the location.
+    const targetMac = "EC:64:C9:9E:E2:3A";
+
+    // ----- Helper Function: Convert RSSI to Estimated Distance (meters) -----
+    function estimateDistance(rssi) {
+      return Math.pow(10, (A - rssi) / (10 * n));
+    }
+
+    // ----- Build Positions Array Using the Devices Data -----
+    // Map each device's 3D position into 2D for visualization:
+    //   - x coordinate remains the same.
+    //   - y coordinate is taken from the z value plus a shift (to handle negative values).
+    const shiftY = 2.5;
+    const positions = [];
+    devices.forEach(device => {
+      const signalData = updatedReadings[targetMac].signals[device.macAddress];
+      if (signalData) {
+        const rssi = signalData.signal;
+        const distance = estimateDistance(rssi);
+        const x = device.position[0];
+        const y = device.position[2] + shiftY; // use z coordinate as y with a shift
+        positions.push({
+          id: device.id,
+          mac: device.macAddress,
+          x: x,
+          y: y,
+          distance: distance,
+          rssi: rssi
+        });
+      }
+    });
+
+    // ----- Triangulation Using Least Squares -----
+    function triangulateLocation(positions) {
+      if (positions.length < 3) {
+        console.error("Not enough positions for triangulation (need at least 3).");
+        return null;
+      }
+      // Use the first position as the reference.
+      const ref = positions[0];
+      const A_matrix = [];
+      const b_vector = [];
+      for (let i = 1; i < positions.length; i++) {
+        const p = positions[i];
+        const a1 = 2 * (p.x - ref.x);
+        const a2 = 2 * (p.y - ref.y);
+        const b_val = (ref.distance ** 2 - p.distance ** 2) +
+                      (p.x ** 2 - ref.x ** 2) + (p.y ** 2 - ref.y ** 2);
+        A_matrix.push([a1, a2]);
+        b_vector.push(b_val);
+      }
+      return solveLeastSquares(A_matrix, b_vector);
+    }
+
+    // Solve an over-determined system A*x = b using least squares.
+    function solveLeastSquares(A, b) {
+      let sum_a11 = 0, sum_a12 = 0, sum_a22 = 0;
+      let sum_a1b = 0, sum_a2b = 0;
+      for (let i = 0; i < A.length; i++) {
+        const a1 = A[i][0], a2 = A[i][1];
+        sum_a11 += a1 * a1;
+        sum_a12 += a1 * a2;
+        sum_a22 += a2 * a2;
+        sum_a1b += a1 * b[i];
+        sum_a2b += a2 * b[i];
+      }
+      const det = sum_a11 * sum_a22 - sum_a12 * sum_a12;
+      if (Math.abs(det) < 1e-6) {
+        console.error("Determinant too close to zero, cannot solve the system.");
+        return null;
+      }
+      const inv_a11 = sum_a22 / det;
+      const inv_a12 = -sum_a12 / det;
+      const inv_a22 = sum_a11 / det;
+      const x = inv_a11 * sum_a1b + inv_a12 * sum_a2b;
+      const y = inv_a12 * sum_a1b + inv_a22 * sum_a2b;
+      return { x, y };
+    }
+
+    const estimatedLocation = triangulateLocation(positions);
+
+    // ----- Canvas Drawing -----
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // Define world boundaries for our 2D visualization.
+    // These are set to comfortably include our APs.
+    const worldXMin = 0;
+    const worldXMax = 6; // x values roughly from 1 to 4.7
+    const worldYMin = 0;
+    const worldYMax = 6; // y values roughly from 0 to 5.5
+
+    const margin = 40;
+
+    function worldToCanvas(x, y) {
+      const canvasX = margin + ((x - worldXMin) / (worldXMax - worldXMin)) * (canvas.width - 2 * margin);
+      const canvasY = canvas.height - (margin + ((y - worldYMin) / (worldYMax - worldYMin)) * (canvas.height - 2 * margin));
+      return { x: canvasX, y: canvasY };
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Draw grid.
+      ctx.strokeStyle = "#eee";
+      ctx.lineWidth = 1;
+      const gridLines = 6;
+      for (let i = 0; i <= gridLines; i++) {
+        const x = worldXMin + (i / gridLines) * (worldXMax - worldXMin);
+        const start = worldToCanvas(x, worldYMin);
+        const end = worldToCanvas(x, worldYMax);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+      }
+      for (let j = 0; j <= gridLines; j++) {
+        const y = worldYMin + (j / gridLines) * (worldYMax - worldYMin);
+        const start = worldToCanvas(worldXMin, y);
+        const end = worldToCanvas(worldXMax, y);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+      }
+      // Draw each AP with its estimated distance circle.
+      devices.forEach(device => {
+        const reading = positions.find(pos => pos.mac === device.macAddress);
+        if (reading) {
+          const pos2D = worldToCanvas(reading.x, reading.y);
+          // Draw AP as a blue dot.
+          ctx.fillStyle = "blue";
+          ctx.beginPath();
+          ctx.arc(pos2D.x, pos2D.y, 6, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.fillStyle = "black";
+          ctx.fillText(device.macAddress, pos2D.x + 8, pos2D.y - 8);
+          // Draw circle for estimated distance.
+          const radius = (reading.distance / (worldXMax - worldXMin)) * (canvas.width - 2 * margin);
+          ctx.strokeStyle = "rgba(0,0,255,0.3)";
+          ctx.beginPath();
+          ctx.arc(pos2D.x, pos2D.y, radius, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+      });
+      // Draw the estimated target location.
+      if (estimatedLocation) {
+        const targetPos = worldToCanvas(estimatedLocation.x, estimatedLocation.y);
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(targetPos.x, targetPos.y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = "black";
+        ctx.fillText("Estimated Target", targetPos.x + 8, targetPos.y - 8);
+      }
+    }
+
+    draw();
+
+    // ----- Display Information -----
+    const infoDiv = document.getElementById("info");
+    let infoHTML = "<h3>AP Readings and Estimated Distances</h3><ul>";
+    positions.forEach(pos => {
+      infoHTML += `<li>AP ${pos.mac}: RSSI ${pos.rssi} dBm, estimated distance ${pos.distance.toFixed(2)} m</li>`;
+    });
+    infoHTML += "</ul>";
+    if (estimatedLocation) {
+      infoHTML += `<p>Estimated Target Location: x=${estimatedLocation.x.toFixed(2)} m, y=${estimatedLocation.y.toFixed(2)} m</p>`;
+    }
+    infoDiv.innerHTML = infoHTML;
+  </script>
+</body>
+</html>

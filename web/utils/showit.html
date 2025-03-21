@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="UTF-8">
   <title>Kalman Filtered Triangulation Visualization</title>
@@ -8,51 +7,50 @@
     body {
       font-family: Arial, sans-serif;
     }
-
     canvas {
       border: 1px solid #ccc;
     }
   </style>
 </head>
-
 <body>
   <h2>Kalman Filtered Triangulation Visualization</h2>
   <canvas id="canvas" width="500" height="500"></canvas>
   <script>
     // ----- Simulation Parameters -----
-    const A = -40; // Reference RSSI (dBm) at 1 meter
-    const n = 2; // Path-loss exponent
-
-    // Noise parameters (for simulation)
-    const noiseAmplitude = 5; // ±~2.5 dBm variability
+    const A = -70; // Reference RSSI (dBm) at 1 meter
+    const n = 2;   // Path-loss exponent
+    const noiseAmplitude = 10; // Noise amplitude for simulated RSSI
 
     // Kalman filter parameters:
-    const R = 4; // Measurement noise covariance (tuned)
+    const R = 4;   // Measurement noise covariance (tuned)
     const Q = 0.1; // Process noise covariance (tuned)
 
-    // ----- Define ESP Board Positions on a Grid (world coordinates) -----
+    // ----- New Device Locations -----
+    // The AP devices come from your devices array.
+    // Their positions are given as [x, y, z], where we use:
+    //   - x coordinate directly.
+    //   - z coordinate as our 2D "y" (after applying a shift).
+    // Since some z values are negative, we shift them by +2.5.
+    const shiftY = 2.5;
     const espBoards = [
-      { node_id: 6, x: 0, y: 0 },
-      { node_id: 4, x: 0, y: 15 },
-      { node_id: 2, x: 15, y: 15 },
-      { node_id: 3, x: 15, y: 0 },
-      { node_id: 1, x: 9.31, y: 6.82 }
+      { node_id: 2, x: 4.7, y: -2.5 + shiftY }, // [4.7, -1, -2.5]
+      { node_id: 5, x: 4.7, y: 3 + shiftY },    // [4.7, -1, 3]
+      { node_id: 3, x: 1,   y: 0.5 + shiftY },    // [1, -1, 0.5]
+      { node_id: 1, x: 1,   y: -2 + shiftY }      // [1, -1, -2]
     ];
-
-    // ----- Ground Truth for the Target Device -----
-    const targetDevice = { mac: "MACADRESS0000", x: 7, y: 9 };
+    // The target device (id: 5, type "Dev") from your devices array.
+    // Its 3D position is [0, -0.5, 0]; we use x = 0 and y = (0 + shiftY).
+    const targetDevice = { mac: "11:22:33:44:55:66", x: 0, y: 0 + shiftY };
 
     // ----- Helper Functions -----
     function distance(x1, y1, x2, y2) {
       return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
     }
-
     // Compute expected RSSI from a given distance.
     function computeRSSI(d) {
       d = Math.max(d, 1);
       return A - 10 * n * Math.log10(d);
     }
-
     // Estimate distance from a given RSSI.
     function estimateDistance(rssi) {
       return Math.pow(10, (A - rssi) / (10 * n));
@@ -66,7 +64,6 @@
         this.x = initialValue; // Initial estimate
         this.P = 1; // Initial error covariance
       }
-
       update(z) {
         // Prediction update:
         this.P = this.P + this.Q;
@@ -78,7 +75,7 @@
       }
     }
 
-    // ----- Initialize Kalman Filters for Each Board -----
+    // ----- Initialize Kalman Filters for Each AP -----
     const kalmanFilters = {};
     espBoards.forEach(board => {
       const d = distance(board.x, board.y, targetDevice.x, targetDevice.y);
@@ -88,22 +85,23 @@
     });
 
     // ----- Simulation Data Update -----
-    // This function simulates new measurements, calculates local triangulation,
-    // sends the full JSON payload to the API, and then draws both the local and API responses.
+    // This function simulates new measurements, computes a local triangulated position,
+    // sends the payload to the API, and then draws both the local and API responses.
     function updateSimulation() {
       const simData = [];
-      // For each board, simulate a new reading and update its Kalman filter.
+      // For each AP board, simulate a new reading and update its Kalman filter.
       espBoards.forEach(board => {
         const d = distance(board.x, board.y, targetDevice.x, targetDevice.y);
         // Simulate raw RSSI with random noise.
         const rawRSSI = computeRSSI(d) + (Math.random() - 0.5) * noiseAmplitude;
-        // Update Kalman filter with raw measurement.
+        // Update Kalman filter with the raw measurement.
         const filteredRSSI = kalmanFilters[board.node_id].update(rawRSSI);
-        // Use "id" property to match the API's expected payload.
+        // Create a simulated sensor reading.
         simData.push({
           id: board.node_id,
           signals: [
             { device: targetDevice.mac, strength: filteredRSSI },
+            // Additional signals (for demonstration only)
             { device: "OTHER_DEVICE_1", strength: -80 + Math.random() * 10 },
             { device: "OTHER_DEVICE_2", strength: -70 + Math.random() * 10 }
           ]
@@ -115,12 +113,10 @@
       // Initially draw without the API response.
       drawResult(simData, localEstimatedPosition, null);
 
-      // ----- Send POST Request with full payload -----
+      // ----- Send POST Request with Full Payload -----
       fetch("http://localhost:3000/api/senddata", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           targetMac: targetDevice.mac,
           sensorReadings: simData
@@ -140,13 +136,13 @@
         .catch(error => console.error("Error sending data:", error));
     }
 
-    // ----- Triangulation using Least Squares (local calculation) -----
+    // ----- Local Triangulation (Least Squares) -----
     function triangulateLocation(espData, targetMac) {
       const positions = [];
       for (const boardData of espData) {
         const reading = boardData.signals.find(signal => signal.device === targetMac);
         if (reading) {
-          // Use boardData.id (now matching the devices' "id")
+          // Match the board using its id.
           const board = espBoards.find(b => b.node_id === boardData.id);
           if (board) {
             const estDistance = estimateDistance(reading.strength);
@@ -154,12 +150,10 @@
           }
         }
       }
-
       if (positions.length < 3) {
-        console.error("Not enough data for triangulation. Need at least 3 sensor readings with the target signal.");
+        console.error("Not enough data for triangulation. Need at least 3 sensor readings.");
         return null;
       }
-
       const ref = positions[0];
       const A_matrix = [];
       const b_vector = [];
@@ -168,7 +162,7 @@
         const a1 = 2 * (p.x - ref.x);
         const a2 = 2 * (p.y - ref.y);
         const b_val = (ref.distance ** 2 - p.distance ** 2) +
-          (p.x ** 2 - ref.x ** 2) + (p.y ** 2 - ref.y ** 2);
+                      (p.x ** 2 - ref.x ** 2) + (p.y ** 2 - ref.y ** 2);
         A_matrix.push([a1, a2]);
         b_vector.push(b_val);
       }
@@ -200,25 +194,22 @@
       return { x, y };
     }
 
-    // ----- Canvas Drawing Functions -----
+    // ----- Canvas Drawing -----
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-
-    // Mapping world coordinates to canvas coordinates.
+    // Adjust world dimensions based on new coordinate range.
     const margin = 40;
-    const worldWidth = 20;
-    const worldHeight = 20;
+    const worldWidth = 6;  // x values from 0 to ~5 (with a little extra)
+    const worldHeight = 6; // y values from 0 to ~6
     function worldToCanvas(x, y) {
       const canvasX = margin + (x / worldWidth) * (canvas.width - 2 * margin);
       const canvasY = canvas.height - (margin + (y / worldHeight) * (canvas.height - 2 * margin));
       return { x: canvasX, y: canvasY };
     }
 
-    // Draw grid, ESP boards, true target, local estimated position, and API estimated position.
-    // The API response marker is drawn in magenta.
+    // Draw grid, AP boards, true target, local and API estimated positions.
     function drawResult(simData, localEstimatedPos, apiEstimatedPos) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       // Draw grid.
       ctx.strokeStyle = "#eee";
       ctx.lineWidth = 1;
@@ -238,8 +229,7 @@
         ctx.lineTo(end.x, end.y);
         ctx.stroke();
       }
-
-      // Draw each ESP board and its estimated distance circle.
+      // Draw each AP board and its estimated distance circle.
       espBoards.forEach(board => {
         const pos = worldToCanvas(board.x, board.y);
         ctx.fillStyle = "blue";
@@ -247,9 +237,8 @@
         ctx.arc(pos.x, pos.y, 6, 0, 2 * Math.PI);
         ctx.fill();
         ctx.fillStyle = "black";
-        ctx.fillText(`ESP ${board.node_id}`, pos.x + 8, pos.y - 8);
-
-        // Draw the circle based on the sensor reading.
+        ctx.fillText(`AP ${board.node_id}`, pos.x + 8, pos.y - 8);
+        // Draw circle based on the sensor reading.
         const boardData = simData.find(d => d.id === board.node_id);
         if (boardData) {
           const reading = boardData.signals.find(signal => signal.device === targetDevice.mac);
@@ -263,8 +252,7 @@
           }
         }
       });
-
-      // Draw true target position.
+      // Draw true target.
       const truePos = worldToCanvas(targetDevice.x, targetDevice.y);
       ctx.fillStyle = "green";
       ctx.beginPath();
@@ -272,7 +260,6 @@
       ctx.fill();
       ctx.fillStyle = "black";
       ctx.fillText("True Target", truePos.x + 8, truePos.y - 8);
-
       // Draw local estimated position in red.
       if (localEstimatedPos) {
         const localPos = worldToCanvas(localEstimatedPos.x, localEstimatedPos.y);
@@ -283,7 +270,6 @@
         ctx.fillStyle = "black";
         ctx.fillText("Local Estimated", localPos.x + 8, localPos.y - 8);
       }
-
       // Draw API estimated position in magenta.
       if (apiEstimatedPos) {
         const apiPos = worldToCanvas(apiEstimatedPos.x, apiEstimatedPos.y);
@@ -297,10 +283,8 @@
     }
 
     // ----- Main Loop -----
-    // Update the simulation every 3000ms.
     setInterval(updateSimulation, 3000);
     updateSimulation();
   </script>
 </body>
-
 </html>

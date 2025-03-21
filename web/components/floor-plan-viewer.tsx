@@ -1,6 +1,6 @@
 "use client";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Environment } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 
 // Floor Plan Model component
 function FloorPlanModel({ url }: { url: string }) {
@@ -65,7 +65,7 @@ export default function FloorPlanViewer({
   devices: Array<{ id: number; position: [number, number, number]; type: string }>;
   estimatedPosition: [number, number, number] | null;
 }) {
-  const modelUrl = "/johnatanassov.glb";
+  const modelUrl = "/lotconsult.glb";
   return (
     <div className="w-full h-full">
       <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
@@ -78,7 +78,6 @@ export default function FloorPlanViewer({
         <DeviceMarkers devices={devices} estimatedPosition={estimatedPosition} />
 
         <OrbitControls enableZoom enablePan enableRotate zoomSpeed={0.5} />
-        <Environment preset="apartment" />
       </Canvas>
     </div>
   );
