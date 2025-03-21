@@ -17,12 +17,12 @@ void setup() {
     BLEServer* pServer = BLEDevice::createServer();
 
     pAdvertising = BLEDevice::getAdvertising();
-    
     BLEAdvertisementData advData;
     advData.setName(DEVICE_NAME);
-
     pAdvertising->setAdvertisementData(advData);
     pAdvertising->start();
+
+    String macAddress = BLEDevice::getAddress().toString().c_str();
 
     M5.Lcd.fillScreen(TFT_BLACK);
     M5.Lcd.setCursor(10, 50);
@@ -30,6 +30,9 @@ void setup() {
     M5.Lcd.setCursor(10, 80);
     M5.Lcd.print("Device: " DEVICE_NAME);
     M5.Lcd.setCursor(10, 110);
+    M5.Lcd.print("MAC: ");
+    M5.Lcd.print(macAddress);
+    
 }
 
 void loop() {
@@ -49,6 +52,9 @@ void loop() {
         M5.Lcd.println("BLE Advertising!");
         M5.Lcd.print("Device: " DEVICE_NAME);
         M5.Lcd.setCursor(10, 110);
+        String macAddress = BLEDevice::getAddress().toString().c_str();
+        M5.Lcd.print("MAC: ");
+        M5.Lcd.print(macAddress);
     }
 
     delay(500);
