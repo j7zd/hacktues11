@@ -5,16 +5,18 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 #include <string>
+#include <WiFi.h>
 
 #define MESH_PREFIX "MyMeshNetwork"
 #define MESH_PASSWORD "password123"
 #define MESH_PORT 5555
 
-int scanTime = 2; // BLE Scan duration (seconds). Must not exceed the first parameter of Task bleScan, or it will cause conflict.
+int scanTime = 2; 
 String jsonString;
 Scheduler userScheduler;
-painlessMesh mesh;                            // mesh network object
-String BOARD_NAME = String(mesh.getNodeId()); // name/number of the board
+painlessMesh mesh;                           
+String BOARD_NAME = String(mesh.getNodeId()); 
+String UID = "";
 String allowedMAC = "ec:64:c9:9e:e2:3a";
 
 String macs[32]{};
@@ -52,6 +54,7 @@ static void scanCompleteCB(BLEScanResults foundDevices)
       deviceJson["mac_address"] = device.getAddress().toString();
       deviceJson["rssi"] = device.getRSSI();
       deviceJson["boardName"] = mesh.getNodeId();
+      deviceJson["anchorID"] = UID;
 
       Serial.printf("Device %d: MAC Address: %s, RSSI: %d\n", i + 1, device.getAddress().toString().c_str(), device.getRSSI());
     }
@@ -78,8 +81,8 @@ static void run()
   BLEScan *pBLEScan = BLEDevice::getScan();
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), false);
   pBLEScan->setActiveScan(true);
-  pBLEScan->setInterval(200); // time between two scans, in ms
-  pBLEScan->setWindow(199);   // scanning window, must be <= interval
+  pBLEScan->setInterval(200); 
+  pBLEScan->setWindow(199);   
 
   Serial.println("Starting scan for " + String(scanTime) + " seconds");
 
@@ -100,7 +103,6 @@ void transmitData()
   mesh.sendBroadcast(command + jsonString);
 }
 
-// Callbacks necessary to keep the mesh network up to date
 void receivedCallback(uint32_t from, String &msg)
 {
   Serial.println("New message received: " + msg);
@@ -117,19 +119,19 @@ void receivedCallback(uint32_t from, String &msg)
   Serial.println("New message received from BOARD " + BOARD_ARRIVED_ID + " ");
 }
 
-// This function is called whenever a new node joins the network
+// called whenever a new node joins the network
 void newConnectionCallback(uint32_t nodeId)
 {
   Serial.printf("New node connected, nodeId = %u\n", nodeId);
 }
 
-// This function is called when a node connects or disconnects
+// called when a node connects or disconnects
 void changedConnectionCallback()
 {
   Serial.printf("Network connection changed\n");
 }
 
-// This function is called when the mesh adjusts timing to keep all nodes in sync
+// called when the mesh adjusts timing to keep all nodes in sync
 void nodeTimeAdjustedCallback(int32_t offset)
 {
   Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
@@ -138,19 +140,20 @@ void nodeTimeAdjustedCallback(int32_t offset)
 void setup()
 {
   Serial.begin(115200);
+  
+  WiFi.mode(WIFI_STA);
+  UID = WiFi.macAddress();
 
-  // Choose the Debug message type that suits you
+  // choose debug message
   // mesh.setDebugMsgTypes(ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE); // all types on
   mesh.setDebugMsgTypes(ERROR | STARTUP | CONNECTION | GENERAL);    // set before init() to see mesh startup messages
   mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT); // initialize the mesh with defined parameters
 
-  // Assign the corresponding function to each event
   mesh.onReceive(&receivedCallback);
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
 
-  // Add tasks to scheduler
   userScheduler.addTask(transmit);
   userScheduler.addTask(bleScan);
   bleScan.enable();
@@ -159,5 +162,5 @@ void setup()
 
 void loop()
 {
-  mesh.update(); // keeps the mesh and scheduler running
+  mesh.update(); 
 }

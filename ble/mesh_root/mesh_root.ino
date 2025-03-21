@@ -1,89 +1,86 @@
-#include "painlessMesh.h"
-#include <WiFi.h>
-#include <HTTPClient.h>
+  #include "painlessMesh.h"
+  #include <WiFi.h>
+  #include <HTTPClient.h>
 
-#define MESH_PREFIX "MyMeshNetwork"
-#define MESH_PASSWORD "password123"
-#define MESH_PORT 5555
+  #define MESH_PREFIX "MyMeshNetwork"
+  #define MESH_PASSWORD "password123"
+  #define MESH_PORT 5555
 
-#define ROUTER_SSID "6rek"
-#define ROUTER_PASSWORD "6rekislove"
-#define SERVER_URL "http://192.168.0.150:42069/"
+  #define ROUTER_SSID "6rek"
+  #define ROUTER_PASSWORD "6rekislove"
+  #define SERVER_URL "http://192.168.0.150:42069/"
 
-painlessMesh mesh;
+  painlessMesh mesh;
 
 
-// Blink Variables
-unsigned long previousMillis = 0;
-const long blinkInterval = 1000;  // Blink every 1 second
-bool ledState = LOW;
+  unsigned long previousMillis = 0;
+  const long blinkInterval = 1000;
+  bool ledState = LOW;
 
-void blink() {
+  void blink() {
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= blinkInterval) {
-        previousMillis = currentMillis;
-        ledState = !ledState;
-        digitalWrite(LED_BUILTIN, ledState);
+      previousMillis = currentMillis;
+      ledState = !ledState;
+      digitalWrite(LED_BUILTIN, ledState);
     }
-}
-
-// Send HTTP request
-void sendHttpRequest(String message) {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        http.begin(SERVER_URL);
-
-        http.addHeader("Content-Type", "application/json");
-
-        int httpResponseCode = http.POST(message);
-
-        if (httpResponseCode > 0) {
-            Serial.println("HTTP Request Sent: " + message);
-        } else {
-            Serial.println("HTTP Request Failed");
-        }
-
-        http.end();
-    } else {
-        Serial.println("Not connected to WiFi");
-    }
-}
-
-
-
-void connectToRouter() {
-  WiFi.begin(ROUTER_SSID, ROUTER_PASSWORD);
-  
-  Serial.println("Connecting to WiFi...");
-  unsigned long startAttemptTime = millis();
-  
-  while (WiFi.status() != WL_CONNECTED) {
-      if (millis() - startAttemptTime > 15000) {  // Timeout after 15 seconds
-          Serial.println("\nWiFi Connection Timed Out!");
-          return;
-      }
-      
   }
 
-  Serial.println("\nConnected to WiFi!");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-}
+  void sendHttpRequest(String message) {
+    if (WiFi.status() == WL_CONNECTED) {
+      HTTPClient http;
+      http.begin(SERVER_URL);
 
-void sendBroadcastMACS(char* macs) {
-  String message = "allowed_macs:" + String(macs);
-  Serial.println("Sending broadcast: " + message);
-  mesh.sendBroadcast(message);
-}
-void sendBroadcastMessageGetBLE() {
-  String message = "command_get_ble";
-  Serial.println("Sending broadcast: " + message);
-  mesh.sendBroadcast(message);
-}
+      http.addHeader("Content-Type", "application/json");
 
-void receivedCallback(uint32_t from, String &msg) {
-  Serial.printf("Received from %u: %s\n", from, msg.c_str());
-  
+      int httpResponseCode = http.POST(message);
+
+      if (httpResponseCode > 0) {
+          Serial.println("HTTP Request Sent: " + message);
+      } else {
+          Serial.println("HTTP Request Failed");
+      }
+
+      http.end();
+    } else {
+      Serial.println("Not connected to WiFi");
+    }
+  }
+
+
+  void connectToRouter() {
+    WiFi.begin(ROUTER_SSID, ROUTER_PASSWORD);
+    
+    Serial.println("Connecting to WiFi...");
+    unsigned long startAttemptTime = millis();
+    
+    while (WiFi.status() != WL_CONNECTED) {
+      if (millis() - startAttemptTime > 15000) { 
+        Serial.println("\nWiFi Connection Timed Out!");
+        return;
+      }
+        
+    }
+
+    Serial.println("\nConnected to WiFi!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  }
+
+  void sendBroadcastMACS(char* macs) {
+    String message = "allowed_macs:" + String(macs);
+    Serial.println("Sending broadcast: " + message);
+    mesh.sendBroadcast(message);
+  }
+  void sendBroadcastMessageGetBLE() {
+    String message = "command_get_ble";
+    Serial.println("Sending broadcast: " + message);
+    mesh.sendBroadcast(message);
+  }
+
+  void receivedCallback(uint32_t from, String &msg) {
+    Serial.printf("Received from %u: %s\n", from, msg.c_str());
+    
     String prefix_command_response = "found_ble:";
     if (msg.startsWith(prefix_command_response)) {
 
@@ -91,14 +88,14 @@ void receivedCallback(uint32_t from, String &msg) {
         sendHttpRequest(extractedData);
         return;
     }
-    
-}
-void newConnectionCallback(uint32_t nodeId) {
+      
+  }
+  void newConnectionCallback(uint32_t nodeId) {
     Serial.printf("New Connection: %u\n", nodeId);
-    
-}
-// Handle serial input
-void checkSerialCommand() {
+      
+  }
+
+  void checkSerialCommand() {
     if (Serial.available()) {
         char command = Serial.read();
         if (command == '1') {
@@ -115,9 +112,9 @@ void checkSerialCommand() {
             Serial.println("I am Root Node");
         }
     }
-}
+  }
 
-void setup() {
+  void setup() {
     Serial.begin(115200);
     pinMode(LED_BUILTIN, OUTPUT);
 
@@ -125,9 +122,9 @@ void setup() {
     mesh.onReceive(&receivedCallback);
     mesh.onNewConnection(&newConnectionCallback);
     connectToRouter();
-}
+  }
 
-void loop() {
+  void loop() {
     mesh.update();
     blink();
     checkSerialCommand();
@@ -135,4 +132,4 @@ void loop() {
 
       connectToRouter();
     }
-}
+  }
