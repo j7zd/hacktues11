@@ -19,7 +19,7 @@ function DeviceMarker({
   // If the device type is "Dev" and we have an estimated position, override the marker position.
   const markerPosition = device.type === "Dev" && estimatedPosition ? estimatedPosition : device.position;
   // Set color: for APs use red; for the Dev target, use magenta.
-  const color = device.type === "Dev" ? "magenta" : "red";
+  const color = device.type === "Dev" ? "blue" : "red";
 
   // Render a different geometry for the Dev target if desired.
   if (device.type === "Dev") {
