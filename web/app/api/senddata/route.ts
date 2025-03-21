@@ -8,33 +8,47 @@ const devices = [
     { id: 3, macAddress: "AA:BB:CC:DD:EE:FF", type: "AP", position: [6.5, -1, -3] },
     { id: 6, macAddress: "AB:CD:EF:12:34:56", type: "AP", position: [-8, -1, -3] },
 ];
+
+// Global variable to store the last valid estimated location.
+let lastEstimatedLocation = null;
+
 export async function POST(request) {
     try {
-
         console.log("Received triangulation request");
         // Expecting a JSON payload with targetMac and sensorReadings.
         const { targetMac, sensorReadings } = await request.json();
 
         if (!targetMac || !sensorReadings) {
             console.error("Invalid payload: missing targetMac or sensorReadings");
-            // Return a 400 Bad Request response if the payload is invalid.
             return new Response(
                 JSON.stringify({ error: "Invalid payload: missing targetMac or sensorReadings" }),
                 { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
             );
         }
 
-        // Call the triangulation utility function.
+        // Compute estimated location from the sensor data.
         const estimatedLocation = triangulateLocation(sensorReadings, targetMac, devices);
 
         if (!estimatedLocation) {
-            return new Response(
-                JSON.stringify({ error: "Triangulation failed. Insufficient or invalid data." }),
-                { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-            );
+            console.warn("Triangulation failed. Not enough valid sensor data.");
+            // If triangulation fails but we have a previous valid location, return that.
+            if (lastEstimatedLocation) {
+                console.log("Returning last valid estimated location:", lastEstimatedLocation);
+                return new Response(
+                    JSON.stringify({ estimatedLocation: lastEstimatedLocation }),
+                    { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+                );
+            } else {
+                return new Response(
+                    JSON.stringify({ error: "Triangulation failed. Insufficient or invalid data." }),
+                    { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+                );
+            }
         }
 
         console.log("Estimated Location:", estimatedLocation);
+        // Save this as the last known valid estimate.
+        lastEstimatedLocation = estimatedLocation;
 
         return new Response(
             JSON.stringify({ estimatedLocation }),
