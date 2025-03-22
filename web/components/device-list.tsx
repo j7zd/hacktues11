@@ -5,14 +5,15 @@ import { useState } from "react"
 interface Device {
   id: number
   macAddress: string
-  type: "AP" | "Dev"
+  type: "AP" | "Good"
 }
 
 interface DeviceListProps {
   devices: Device[]
+  emergency: boolean
 }
 
-export default function DeviceList({ devices }: DeviceListProps) {
+export default function DeviceList({ devices, emergency }: DeviceListProps) {
   const [selectedDevice, setSelectedDevice] = useState<number | null>(null)
 
   return (
@@ -30,15 +31,25 @@ export default function DeviceList({ devices }: DeviceListProps) {
               onClick={() => setSelectedDevice(device.id)}
             >
               <div className="flex items-center justify-between">
-                <span className={`font-mono ${device.type === "Dev" ? "text-blue-600" : "text-gray-600"}`}>
+                <span className={`font-mono ${
+                  device.type === "Good"
+                    ? emergency
+                      ? "text-red-600"
+                      : "text-green-600"
+                    : "text-gray-600"
+                }`}>
                   {device.macAddress}
                 </span>
                 <span
                   className={`px-2 py-1 rounded-full text-xs ${
-                    device.type === "Dev" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
+                    device.type === "Good"
+                      ? emergency
+                        ? "bg-red-100 text-red-800"
+                        : "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
                   }`}
                 >
-                  {device.type}
+                  {device.type === "Good" && emergency ? "Needs Help" : device.type}
                 </span>
               </div>
             </li>
@@ -48,4 +59,3 @@ export default function DeviceList({ devices }: DeviceListProps) {
     </div>
   )
 }
-
