@@ -31,12 +31,12 @@ void drawStartupUI()
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setTextSize(2);
     M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setCursor(10, 10);
+    M5.Lcd.setCursor(20, 100);
     M5.Lcd.println("Fall Detection System");
-    M5.Lcd.setCursor(10, 40);
-    M5.Lcd.println("Press A: Stop BLE");
-    M5.Lcd.setCursor(10, 70);
-    M5.Lcd.println("Press B: Start BLE");
+    // M5.Lcd.setCursor(10, 40);
+    // M5.Lcd.println("Press A: Stop BLE");
+    // M5.Lcd.setCursor(10, 70);
+    // M5.Lcd.println("Press B: Start BLE");
     drawBLEStatus(isBLEOn()); 
 }
 
@@ -64,10 +64,10 @@ void drawDefaultScreen()
     M5.Lcd.println("Monitoring...");
 
     M5.Lcd.fillRoundRect(panicButtonZone.x, panicButtonZone.y, panicButtonZone.w, panicButtonZone.h, 10, RED);
-    M5.Lcd.setCursor(panicButtonZone.x + 20, panicButtonZone.y + 30);
+    M5.Lcd.setCursor(panicButtonZone.x + 40, panicButtonZone.y + 30);
     M5.Lcd.setTextColor(WHITE);
     M5.Lcd.setTextSize(3);
-    M5.Lcd.print("PANIC");
+    M5.Lcd.print("CALL");
 
     drawBLEStatus(isBLEOn());
     defaultScreenStart = millis();
@@ -172,6 +172,8 @@ void updateFallPrompt(TouchPoint_t touch, bool touched)
             M5.Lcd.println("Glad you're OK!");
             isFallPromptActive = false;
             sendWeGoodRequest();
+            drawDefaultScreen();
+            return;
         }
         else if (noButtonZone.contains(touch))
         {
@@ -181,6 +183,7 @@ void updateFallPrompt(TouchPoint_t touch, bool touched)
             M5.Lcd.println("Help is on the way!");
             isFallPromptActive = false;
             sendHelpRequest();
+            return;
         }
     }
 
@@ -194,9 +197,11 @@ void updateFallPrompt(TouchPoint_t touch, bool touched)
     if (millis() - fallPromptStart >= FALL_TIMEOUT)
     {
         M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setCursor(40, 100);
+        M5.Lcd.setCursor(70, 100);
         M5.Lcd.setTextColor(ORANGE);
-        M5.Lcd.println("No response. Sending help!");
+        M5.Lcd.println("No response.");
+        M5.Lcd.setCursor(50, 130);
+        M5.Lcd.println("Help is on the way!");
         isFallPromptActive = false;
         sendHelpRequest();
     }

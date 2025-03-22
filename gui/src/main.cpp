@@ -2,16 +2,18 @@
 #include "ble_manager.h"
 #include "ui_manager.h"
 #include "send_message.h"
+#include "fall_detector.h"
 
 unsigned long startupTime;
 bool inStartup = true;
 
 void setup()
 {
-  M5.begin();
-  connectToWiFi();
-  initBLE();
-  drawStartupUI();
+  M5.begin();         // Start M5 system
+  connectToWiFi();    // For help/wegood messaging
+  initBLE();          // BLE advertisement
+  initGyroAccel();     // Init accelerometer and serial
+  drawStartupUI(); // Initial splash screen
   startupTime = millis();
 }
 
@@ -25,18 +27,26 @@ void loop()
 
   unsigned long now = millis();
 
+  // Show main screen 2s after boot
   if (inStartup)
   {
-    if (now - startupTime > 1000)
+    if (now - startupTime > 2000)
     {
-      drawDefaultScreen();
+      drawDefaultScreen(); // Show CALL button
       inStartup = false;
       isDefaultScreen = true;
     }
     return;
   }
 
-  if (isFallPromptActive)
+  // Run accelerometer-based fall detection
+  bool a = hasFallen();
+  if (a)
+  {
+    updateFallPrompt(touch, touched);
+  }
+  // UI state machine
+  if ( isFallPromptActive)
   {
     updateFallPrompt(touch, touched);
   }
@@ -49,6 +59,6 @@ void loop()
     updateDefaultScreen(touch, touched);
   }
 
-  updateBLEStatus();
+  updateBLEStatus(); // BLE ON/OFF indicator
   delay(50);
 }
