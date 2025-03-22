@@ -8,7 +8,6 @@ const espBoards = [
   { node_id: 2, x: 0,  y: 10 },
   { node_id: 3, x: 10, y: 0  },
   { node_id: 4, x: 10, y: 10 }
-  // You can add more boards as needed.
 ];
 
 // ----- Ground Truth for the Target Device -----
@@ -20,37 +19,29 @@ function distance(x1, y1, x2, y2) {
   return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
-// Compute expected RSSI from a given distance using the path-loss model.
-// Formula: rssi = A - 10 * n * log10(d)
+// formula: rssi = A - 10 * n * log10(d)
 function computeRSSI(d) {
   // Ensure a minimum distance of 1 meter to avoid math issues.
   d = Math.max(d, 1);
   return A - 10 * n * Math.log10(d);
 }
 
-// Estimate distance from a given RSSI (inverse of the above model).
 function estimateDistance(rssi) {
   return Math.pow(10, (A - rssi) / (10 * n));
 }
 
 // ----- Simulate ESP Data -----
-// Each ESP board "reads" several devices. We simulate the reading for our target device
-// based on its true distance from the board and add a little noise. We also simulate a couple
-// of random other devices.
 function simulateESPData() {
   const data = [];
   for (const board of espBoards) {
-    // Compute true distance from this board to the target device.
     const d = distance(board.x, board.y, targetDevice.x, targetDevice.y);
-    // Add random noise (±~2.5 dBm) to simulate measurement variance.
+    // Add random noise (±~2.5 dBm)
     const noise = (Math.random() - 0.5) * 5;
     const rssi = computeRSSI(d) + noise;
-    // Build JSON structure for this board.
     const boardData = {
       node_id: board.node_id,
       signals: [
         { device: targetDevice.mac, strength: rssi },
-        // Other random devices (not used for triangulation).
         { device: "OTHER_DEVICE_1", strength: -80 + Math.random() * 10 },
         { device: "OTHER_DEVICE_2", strength: -70 + Math.random() * 10 }
       ]
@@ -61,16 +52,11 @@ function simulateESPData() {
 }
 
 // ----- Triangulation using Least Squares -----
-// Given the ESP JSON data and the target MAC, this function gathers all the boards
-// that “see” the target, estimates their distance from the target, and then computes
-// the best (x, y) estimate for the target device using a least squares approach.
 function triangulateLocation(espData, targetMac) {
   const positions = [];
-  // For each board's data, check if it includes the target device.
   for (const boardData of espData) {
     const reading = boardData.signals.find(signal => signal.device === targetMac);
     if (reading) {
-      // Lookup board position by node_id.
       const board = espBoards.find(b => b.node_id === boardData.node_id);
       if (board) {
         const estDistance = estimateDistance(reading.strength);
@@ -84,7 +70,6 @@ function triangulateLocation(espData, targetMac) {
     return null;
   }
   
-  // Use the first board as a reference. For every other board, subtract the circle equation.
   const ref = positions[0];
   const A_matrix = [];
   const b_vector = [];
@@ -100,7 +85,6 @@ function triangulateLocation(espData, targetMac) {
     b_vector.push(b_val);
   }
   
-  // Solve the over-determined linear system using least squares.
   return solveLeastSquares(A_matrix, b_vector);
 }
 

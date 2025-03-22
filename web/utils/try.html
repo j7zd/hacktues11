@@ -23,8 +23,8 @@
   
   <script>
     // ----- Parameters -----
-    const A = -70; // Reference RSSI (dBm) at 1 meter
-    const n = 2;   // Path-loss exponent
+    const A = -70; // 1m
+    const n = 2;
 
     // ----- Devices Array with AP positions in meters -----
     const devices = [
@@ -34,7 +34,7 @@
       { id: 1, macAddress: "24:58:7C:CE:33:A8", type: "AP", position: [1, -1, -2] }
     ];
 
-    // ----- Updated Node Readings -----
+    // ----- Node Readings, testvane -----
     const updatedReadings = {
       "EC:64:C9:9E:E2:3A": {
         "targetMac": "EC:64:C9:9E:E2:3A",
@@ -63,18 +63,12 @@
       }
     };
 
-    // The target MAC for which we estimate the location.
     const targetMac = "EC:64:C9:9E:E2:3A";
 
-    // ----- Helper Function: Convert RSSI to Estimated Distance (meters) -----
     function estimateDistance(rssi) {
       return Math.pow(10, (A - rssi) / (10 * n));
     }
 
-    // ----- Build Positions Array Using the Devices Data -----
-    // Map each device's 3D position into 2D for visualization:
-    //   - x coordinate remains the same.
-    //   - y coordinate is taken from the z value plus a shift (to handle negative values).
     const shiftY = 2.5;
     const positions = [];
     devices.forEach(device => {
@@ -95,13 +89,13 @@
       }
     });
 
-    // ----- Triangulation Using Least Squares -----
+
     function triangulateLocation(positions) {
       if (positions.length < 3) {
         console.error("Not enough positions for triangulation (need at least 3).");
         return null;
       }
-      // Use the first position as the reference.
+
       const ref = positions[0];
       const A_matrix = [];
       const b_vector = [];
@@ -117,7 +111,6 @@
       return solveLeastSquares(A_matrix, b_vector);
     }
 
-    // Solve an over-determined system A*x = b using least squares.
     function solveLeastSquares(A, b) {
       let sum_a11 = 0, sum_a12 = 0, sum_a22 = 0;
       let sum_a1b = 0, sum_a2b = 0;
@@ -144,12 +137,10 @@
 
     const estimatedLocation = triangulateLocation(positions);
 
-    // ----- Canvas Drawing -----
+
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-    // Define world boundaries for our 2D visualization.
-    // These are set to comfortably include our APs.
     const worldXMin = 0;
     const worldXMax = 6; // x values roughly from 1 to 4.7
     const worldYMin = 0;

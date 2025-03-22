@@ -23,7 +23,6 @@ function DeviceMarker({
     device.type === "Good" && estimatedPosition ? estimatedPosition : device.position;
   
   if (device.type === "Good") {
-    // Green when normal, red when in emergency.
     const color = emergency ? "red" : "green";
     return (
       <mesh position={markerPosition}>
@@ -33,7 +32,6 @@ function DeviceMarker({
     );
   }
 
-  // Render AP devices as spheres with red color.
   return (
     <mesh position={markerPosition}>
       <sphereGeometry args={[0.2, 32, 32]} />

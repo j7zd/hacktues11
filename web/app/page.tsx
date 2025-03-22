@@ -6,20 +6,19 @@ import DeviceList from "@/components/device-list";
 import { Toaster, toast } from "sonner";
 
 export default function Home() {
-  // Hard-coded devices array with a "Good" device.
   const [devices] = useState([
     { id: 3, macAddress: "24:58:7C:E1:F7:9C", type: "AP", position: [4.7, -1, -2.5] },
     { id: 5, macAddress: "3C:84:27:CC:7A:8C", type: "AP", position: [4.7, -1, 3] },
     { id: 2, macAddress: "24:58:7C:E1:EE:70", type: "AP", position: [1, -1, 0.5] },
     { id: 1, macAddress: "24:58:7C:CE:33:A8", type: "AP", position: [1, -1, -2] },
-    { id: 9, macAddress: "EC:64:C9:9E:E2:3A", type: "Good", position: [0, -0.5, 0] }
+
+    { id: 9, macAddress: "EC:64:C9:9E:E2:3A", type: "Good", position: [0, -0.5, 0] } // promenlivo
   ]);
 
   const [estimatedPosition, setEstimatedPosition] = useState<[number, number, number] | null>(null);
   const [currentFloor, setCurrentFloor] = useState("floor1");
   const [emergency, setEmergency] = useState(false);
 
-  // Poll the API every 500ms to update the estimated location.
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -38,11 +37,9 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Poll the emergency status for the Good device every second.
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        // Use the Good device's MAC address in the query.
         const res = await fetch("/api/emergency-status?mac=EC:64:C9:9E:E2:3A");
         if (res.ok) {
           const data = await res.json();
@@ -55,7 +52,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Trigger a toast notification when emergency becomes active.
   useEffect(() => {
     if (emergency) {
       toast("Patient needs help");
@@ -66,7 +62,6 @@ export default function Home() {
     <>
       <Toaster />
       <main className="flex h-screen">
-        {/* Floor Plan Viewer takes up 75% of the width */}
         <div className="w-3/4 h-full relative">
           <FloorPlanViewer
             floorPlan={currentFloor}
@@ -84,7 +79,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Device List takes up 25% of the width */}
         <div className="w-1/4 h-full border-l border-gray-300">
           <DeviceList devices={devices} emergency={emergency} />
         </div>
