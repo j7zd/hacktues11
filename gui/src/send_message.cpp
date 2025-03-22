@@ -4,7 +4,7 @@
 const char *ssid = "6rek";
 const char *password = "6rekislove";
 
-const char *SERVER_URL = "http://192.168.0.150:42069";
+const char *SERVER_URL = "http://192.168.0.160:3000";
 const char *MAC_ADDRESS = "EC:64:C9:9E:E2:3A";
 
 void connectToWiFi()
