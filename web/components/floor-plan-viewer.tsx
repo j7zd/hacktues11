@@ -64,7 +64,6 @@ function DeviceMarkers({
   );
 }
 
-// Main Floor Plan Viewer component.
 export default function FloorPlanViewer({
   floorPlan,
   devices,
